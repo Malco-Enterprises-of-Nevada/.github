@@ -1,0 +1,58 @@
+# Org-wide Claude code review. Called by each repo's .github/workflows/claude-review.yml.
+# Comment-only: the --allowedTools list is what stops it approving or pushing; keep it tight.
+# Edit the prompt here, not in the callers.
+name: Claude review
+on:
+  workflow_call:
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: false
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    # bot-authored PRs: dependabot gets no org secrets and the action rejects non-human actors;
+    # drafts are reviewed when marked ready
+    if: ${{ !endsWith(github.actor, '[bot]') && !github.event.pull_request.draft }}
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - id: cred
+        env:
+          HAVE: ${{ secrets.ANTHROPIC_API_KEY != '' || secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+        run: |
+          echo "ok=$HAVE" >> "$GITHUB_OUTPUT"
+          [ "$HAVE" = true ] || echo "::notice::No ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN org secret; skipping Claude review"
+      - if: steps.cred.outputs.ok == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - if: steps.cred.outputs.ok == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request. The PR branch is checked out in the working directory.
+            Read the repository's CLAUDE.md first if it exists and hold the change to the
+            conventions and traps it documents.
+
+            Report only things that matter: bugs, security holes, data loss or corruption,
+            broken callers, missing error handling at trust boundaries, and tests that no
+            longer prove what they claim. Skip style, naming and formatting. If a dependency
+            bump is the whole change, say so in one line and stop.
+
+            Use `mcp__github_inline_comment__create_inline_comment` (with `confirmed: true`)
+            for specific lines. Post the summary with `gh pr comment --edit-last --create-if-none`
+            so the PR carries one Claude summary that you update on each push. Lead it with a
+            one-line verdict. Do not approve or request changes; a human and Copilot do that.
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
