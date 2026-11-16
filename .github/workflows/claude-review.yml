@@ -41,9 +41,23 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Review this pull request. The PR branch is checked out in the working directory.
-            Read the repository's CLAUDE.md first if it exists and hold the change to the
-            conventions and traps it documents.
+            Review this pull request.
+
+            Where the change is:
+            - The change under review is exactly `gh pr diff ${{ github.event.pull_request.number }}`
+              (files: `gh pr view ${{ github.event.pull_request.number }} --json files`). Take the
+              PR's changes only from there. If it fails, say so in the summary and stop.
+            - The working directory is GitHub's merge of the PR into its base branch, checked out
+              at depth 1. Read it for context around the diff, but it has no history to diff
+              against, so never treat `git status` or `git diff` output as the PR's changes.
+            - Because the PR head is untrusted, the action resets agent configuration files
+              (CLAUDE.md, CLAUDE.local.md, .claude/, .mcp.json and similar) to the base branch's
+              versions before you start, and keeps the PR's own copies under .claude-pr/. The
+              working tree therefore differs from the PR in those paths; that is not the PR's
+              doing. Review any change the PR makes to them from `gh pr diff`.
+
+            Read the repository's CLAUDE.md first if it exists (the base branch's copy) and hold
+            the change to the conventions and traps it documents.
 
             Report only things that matter: bugs, security holes, data loss or corruption,
             broken callers, missing error handling at trust boundaries, and tests that no
