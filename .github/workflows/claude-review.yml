@@ -29,11 +29,11 @@ jobs:
           echo "ok=$HAVE" >> "$GITHUB_OUTPUT"
           [ "$HAVE" = true ] || echo "::notice::No ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN org secret; skipping Claude review"
       - if: steps.cred.outputs.ok == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 1
       - if: steps.cred.outputs.ok == 'true'
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@4a461cbbb72e467c61b1e47547fc0d7dacece34a # v1.0.288
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
